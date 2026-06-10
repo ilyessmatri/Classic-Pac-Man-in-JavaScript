@@ -175,8 +175,20 @@ function draw() {
   }
 }
 function move() {
-  pacman.x += pacman.velocityX;
-  pacman.y += pacman.velocityY;
+  for (let ghost of ghosts.values()) {
+    pacman.x += pacman.velocityX;
+    pacman.y += pacman.velocityY;
+    if ( ghost.x % tileSize ==  0 && ghost.y % tileSize == 0) {
+      const possibleDirections =  getPossibleDirections(ghost);
+      if (possibleDirections.length >= 3) {
+        if (Math.random() < 0.5) {
+          const newDirection = possibleDirections[Math.floor (Math.random() * possibleDirections.length)];
+          ghost.updateDirection(newDirection);
+        }
+      } 
+    }    
+  }
+  
 
   for (let wall of walls.values()) {
     if (collision(pacman, wall)) {
@@ -218,6 +230,7 @@ function move() {
       }
     }
   }
+
   //check food colision
   let foodEaten = null;
   for (let food of foods.values()) {
@@ -285,6 +298,42 @@ function collision(a, b) {
     a.y + a.height > b.y
   );
 }
+
+// detect an intersection and help ghosts change there direction mid game
+function getPossibleDirections(ghost) {
+  let possibleDirections =[]
+
+  const tests = [
+    {dir:"U", x: ghost.x, y: ghost.y - tileSize},
+    {dir:"D", x: ghost.x, y: ghost.y + tileSize},
+    {dir:"L", x: ghost.x - tileSize , y: ghost.y},
+    {dir:"R", x: ghost.x + tileSize, y: ghost.y}
+  ]
+
+  for (let test of tests) {
+    let blocked = false;
+
+    for (let wall of walls.values()) {
+      if (
+        test.x < wall.x + wall.width &&
+        test.x + ghost.width > wall.x &&
+        test.y < wall.y + wall.height &&
+        test.y + ghost.height > wall.y
+        ){
+          blocked = true;
+          break
+        }
+    }
+    if (!blocked) {
+      possibleDirections.push(test.dir);
+      
+    }
+    
+  }
+  return possibleDirections; 
+}
+
+
 
 class Block {
   constructor(image, x, y, width, height) {
