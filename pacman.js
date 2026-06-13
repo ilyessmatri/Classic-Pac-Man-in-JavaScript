@@ -54,6 +54,17 @@ let score = 0;
 let lives = 3;
 let gameover = false;
 
+//another smart mode system that i need in 1.2
+let phaseStart = Date.now();
+let phase = "cooldown";
+
+let smartMode = false;
+
+let SMART_DURATION = 5000; // mean 5 seconds 
+let SMART_COOLDOWN = 60000; // mean 60 seconds or 1 minute
+
+let smartGhostIndex = -1
+
 window.onload = function () {
   board = document.getElementById("board");
   board.height = boardHeight;
@@ -175,18 +186,55 @@ function draw() {
   }
 }
 function move() {
-  for (let ghost of ghosts.values()) {
-    pacman.x += pacman.velocityX;
-    pacman.y += pacman.velocityY;
-    if ( ghost.x % tileSize ==  0 && ghost.y % tileSize == 0) {
-      const possibleDirections =  getPossibleDirections(ghost);
-      if (possibleDirections.length >= 3) {
-        if (Math.random() < 0.5) {
-          const newDirection = possibleDirections[Math.floor (Math.random() * possibleDirections.length)];
-          ghost.updateDirection(newDirection);
+  const now = Date.now();
+  const elapsed = now - phaseStart;
+
+   // ghost start smart mode after cooldown 
+  if (phase === "cooldown" && elapsed >= SMART_COOLDOWN) {
+    phase = "smart";
+    smartMode = true;
+    phaseStart = now;
+
+    smartGhostIndex = Math.floor(Math.random() * ghosts.size);
+    
+  }
+
+  //ghosts stop being smart mode after duration and be normal again 
+  else if (phase === "smart" && elapsed >= SMART_DURATION) {
+    phase = "cooldown"; 
+    smartMode = false;
+    phaseStart = now;
+    smartGhostIndex = -1;
+    
+  }
+  // this only to see if the function work or not 
+  console.log("pahese:", phase, "smartMode:", smartMode);
+
+
+  // pacman rules moves 
+  pacman.x += pacman.velocityX;
+  pacman.y += pacman.velocityY;
+  let ghostArray = Array.from(ghosts);
+  for (let i = 0; i < ghostArray.length; i++) {
+    let ghost = ghostArray[i];
+
+    if (ghost.x % tileSize == 0 && ghost.y % tileSize == 0) {
+      const possibleDirections = getPossibleDirections(ghost);
+      if (possibleDirections.length > 0) {
+        let newDirection;
+        //now only the smart ghost shase pacman 
+        if (smartMode && i === smartGhostIndex) {
+          newDirection = chooseBestDirection(ghost, pacman, possibleDirections);
+          
+        }else {
+          newDirection = possibleDirections[Math.floor(Math.random() * possibleDirections.length)]
         }
-      } 
-    }    
+        ghost.updateDirection(newDirection);
+        
+    }
+    
+    }
+    
   }
   
 
@@ -257,6 +305,10 @@ function movePacman(e) {
     lives = 3;
     score = 0;
     gameover = false;
+
+    lastSmartModeTime = Date.now()
+    smartMode = false;
+    
     update();
     return;
   }
@@ -301,14 +353,14 @@ function collision(a, b) {
 
 // detect an intersection and help ghosts change there direction mid game
 function getPossibleDirections(ghost) {
-  let possibleDirections =[]
+  let possibleDirections = [];
 
   const tests = [
-    {dir:"U", x: ghost.x, y: ghost.y - tileSize},
-    {dir:"D", x: ghost.x, y: ghost.y + tileSize},
-    {dir:"L", x: ghost.x - tileSize , y: ghost.y},
-    {dir:"R", x: ghost.x + tileSize, y: ghost.y}
-  ]
+    { dir: "U", x: ghost.x, y: ghost.y - tileSize },
+    { dir: "D", x: ghost.x, y: ghost.y + tileSize },
+    { dir: "L", x: ghost.x - tileSize, y: ghost.y },
+    { dir: "R", x: ghost.x + tileSize, y: ghost.y },
+  ];
 
   for (let test of tests) {
     let blocked = false;
@@ -319,21 +371,42 @@ function getPossibleDirections(ghost) {
         test.x + ghost.width > wall.x &&
         test.y < wall.y + wall.height &&
         test.y + ghost.height > wall.y
-        ){
-          blocked = true;
-          break
-        }
+      ) {
+        blocked = true;
+        break;
+      }
     }
     if (!blocked) {
       possibleDirections.push(test.dir);
-      
     }
-    
   }
-  return possibleDirections; 
+  return possibleDirections;
 }
+//the function that i need to make the ghosts chase the pacman
+function distance(x1, y1, x2, y2) {
+  return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+}
+function chooseBestDirection(ghost, pacman, possibleDirections) {
+  let bestDir = null;
+  let bestScore = Infinity;
 
+  for (let dir of possibleDirections) {
+    let nextX = ghost.x;
+    let nextY = ghost.y;
 
+    if (dir === "U") nextY -= tileSize;
+    if (dir === "D") nextY += tileSize;
+    if (dir === "L") nextX -= tileSize;
+    if (dir === "R") nextX += tileSize;
+    let score = distance(nextX, nextY, pacman.x, pacman.y);
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestDir = dir;
+    }
+  }
+  return bestDir;
+}
 
 class Block {
   constructor(image, x, y, width, height) {
