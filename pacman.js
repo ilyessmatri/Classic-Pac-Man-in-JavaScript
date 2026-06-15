@@ -52,6 +52,7 @@ let pacman;
 const directions = ["U", "D", "L", "R"];
 let score = 0;
 let lives = 3;
+let  level = 1;
 let gameover = false;
 
 //another smart mode system that i need in 1.2
@@ -64,6 +65,8 @@ let SMART_DURATION = 5000; // mean 5 seconds
 let SMART_COOLDOWN = 60000; // mean 60 seconds or 1 minute
 
 let smartGhostIndex = -1
+
+let bufferedDirection  = "null";
 
 window.onload = function () {
   board = document.getElementById("board");
@@ -179,7 +182,9 @@ function draw() {
     context.fillText("game Over: " + String(score), tileSize / 2, tileSize / 2);
   } else {
     context.fillText(
-      "x" + String(lives) + " " + String(score),
+      "Lives:" + lives +
+       "score: " + score+
+       "level:" + level,
       tileSize / 2,
       tileSize / 2
     );
@@ -208,8 +213,24 @@ function move() {
     
   }
   // this only to see if the function work or not 
-  console.log("pahese:", phase, "smartMode:", smartMode);
 
+  //console.log("pahese:", phase, "smartMode:", smartMode);
+
+  // buffer the movement about pacman 
+  if (bufferedDirection !== null &&
+    pacman.x % tileSize == 0 && pacman.y % tileSize == 0) {
+    pacman.updateDirection(bufferedDirection);
+    //this get take it away from function pacmanMove(e)
+    if (pacman.direction == "U") {
+      pacman.image = pacmanUpImage;
+    } else if (pacman.direction == "D") {
+      pacman.image = pacmanDownImage;
+    } else if (pacman.direction == "L") {
+      pacman.image = pacmanLeftImage;
+    } else if (pacman.direction == "R") {
+      pacman.image = pacmanRightImage;
+    }
+  }
 
   // pacman rules moves 
   pacman.x += pacman.velocityX;
@@ -294,6 +315,7 @@ function move() {
 
   //reset level
   if (foods.size == 0) {
+    level++;
     loadMap();
     resetPosition();
   }
@@ -313,23 +335,13 @@ function movePacman(e) {
     return;
   }
   if (e.code == "ArrowUp" || e.code == "KeyW") {
-    pacman.updateDirection("U");
+    bufferedDirection = "U";
   } else if (e.code == "ArrowDown" || e.code == "KeyS") {
-    pacman.updateDirection("D");
+    bufferedDirection = "D";
   } else if (e.code == "ArrowLeft" || e.code == "KeyA") {
-    pacman.updateDirection("L");
+    bufferedDirection = "L";
   } else if (e.code == "ArrowRight" || e.code == "KeyD") {
-    pacman.updateDirection("R");
-  }
-
-  if (pacman.direction == "U") {
-    pacman.image = pacmanUpImage;
-  } else if (pacman.direction == "D") {
-    pacman.image = pacmanDownImage;
-  } else if (pacman.direction == "L") {
-    pacman.image = pacmanLeftImage;
-  } else if (pacman.direction == "R") {
-    pacman.image = pacmanRightImage;
+    bufferedDirection = "R";
   }
 }
 function resetPosition() {
